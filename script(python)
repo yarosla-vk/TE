@@ -1,0 +1,67 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+import time
+import logging
+import requests
+
+logging.basicConfig(filename='out.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
+def login(url, username, password):
+    try:
+        driver = webdriver.Chrome()
+        driver.get(url)
+        time.sleep(2)
+
+        email_field = driver.find_element(By.ID, "email")
+        email_field.send_keys(username)
+        password_field = driver.find_element(By.ID, "pass")
+        password_field.send_keys(password)
+        password_field.send_keys(Keys.RETURN)
+        time.sleep(5)
+
+        if "captcha" in driver.page_source.lower():
+            logging.warning("CAPTCHA detected.")
+            time.sleep(30)
+
+        logging.info("Login successful.")
+        return driver
+    except Exception as e:
+        logging.error(f"Error during login: {e}")
+        return None
+
+def save_pic(driver, platform):
+    try:
+        if platform == "facebook":
+            driver.get("https://www.facebook.com/me")
+            time.sleep(3)
+            profile_picture = driver.find_element(By.CSS_SELECTOR, "img._1drn._1drp._1drq")
+        elif platform == "linkedin":
+            driver.get("https://www.linkedin.com/in/")
+            time.sleep(3)
+            profile_picture = driver.find_element(By.CSS_SELECTOR, "img.profile-photo-edit__preview")
+        else:
+            logging.error("Unsupported platform.")
+            return
+
+        picture_url = profile_picture.get_attribute("src")
+        with open("profile_picture.jpg", "wb") as f:
+            f.write(requests.get(picture_url).content)
+        logging.info("Profile picture saved successfully!")
+    except Exception as e:
+        logging.error(f"Error saving profile picture: {e}")
+
+if __name__ == "__main__":
+    URL = "https://www.facebook.com"
+    USERNAME = "your_username"
+    PASSWORD = "your_password"
+    PLATFORM = "facebook"
+
+    driver = login(URL, USERNAME, PASSWORD)
+    if driver:
+        try:
+            save_pic(driver, PLATFORM)
+        except Exception as e:
+            logging.error(f"Error: {e}")
+        finally:
+            driver.quit()
